@@ -1,5 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Árbol del Bot RRHH</title>
 <style>
 :root {
@@ -46,6 +47,7 @@ body {
   color:var(--ink);
   font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
 }
 
 .page {
@@ -56,6 +58,7 @@ body {
   flex-direction:column;
   gap:1.5rem;
 }
+.page > * { min-width:0; }
 
 .page > header, .page > .legend, .page > figure > figcaption, .page > footer {
   max-width:1560px;
@@ -91,6 +94,7 @@ h1 {
 
 .chip {
   display:inline-flex; align-items:center; gap:.5rem;
+  flex:none;
   padding:.4rem .75rem;
   border-radius:999px;
   border:1.5px solid var(--chip-c);
@@ -107,13 +111,46 @@ h1 {
 .c-note  { --chip-c:var(--external); --chip-fill:transparent; }
 .c-def   { --chip-c:var(--border); --chip-fill:var(--mask-2); }
 
-figure { margin:0; display:flex; flex-direction:column; gap:.75rem; }
+figure { margin:0; min-width:0; display:flex; flex-direction:column; gap:.75rem; }
+
+.branch-nav {
+  display:flex;
+  min-width:0;
+  max-width:100%;
+  gap:.5rem;
+  overflow-x:auto;
+  padding:.125rem 0 .375rem;
+  scrollbar-width:thin;
+}
+.branch-nav button {
+  flex:none;
+  min-height:2.5rem;
+  padding:.55rem .85rem;
+  border:1px solid var(--border);
+  border-radius:.5rem;
+  background:var(--mask);
+  color:var(--muted);
+  font:700 .6875rem/1.2 inherit;
+  letter-spacing:.02em;
+  cursor:pointer;
+  touch-action:manipulation;
+  transition:border-color .15s, background-color .15s, color .15s;
+}
+.branch-nav button:hover,
+.branch-nav button:focus-visible,
+.branch-nav button[aria-pressed="true"] {
+  border-color:var(--frontend);
+  background:var(--frontend-fill);
+  color:var(--frontend);
+  outline:none;
+}
 
 .canvas-shell {
   position:relative;
   width:100%;
-  margin:0 -2rem;
-  padding:0 2rem;
+  min-width:0;
+  margin:0;
+  padding:0;
   box-sizing:border-box;
 }
 
@@ -167,6 +204,7 @@ figure { margin:0; display:flex; flex-direction:column; gap:.75rem; }
 }
 .canvas-toolbar button:hover, .canvas-toolbar button:focus-visible { color:var(--frontend); border-color:var(--frontend); outline:none; }
 .canvas-toolbar .zoom-pct { width:auto; padding:0 .6rem; letter-spacing:.02em; }
+.canvas-toolbar #zoomFit { width:auto; padding:0 .65rem; }
 .canvas-toolbar .sep { width:1px; height:1.1rem; background:var(--border); margin:0 .15rem; }
 
 .canvas-hint {
@@ -231,6 +269,11 @@ footer {
 @media (max-width:720px) {
   .page { padding:1.5rem 1rem 3rem; }
   h1 { font-size:1.375rem; }
+  .legend { flex-wrap:nowrap; overflow-x:auto; padding:.75rem; }
+  .canvas-viewport { height:72svh; min-height:520px; border-radius:.75rem; }
+  .canvas-toolbar { top:.5rem; right:.5rem; }
+  .canvas-hint { display:none; }
+  .branch-nav button { min-height:2.75rem; }
 }
 </style>
 
@@ -255,6 +298,12 @@ footer {
   </div>
 
   <figure>
+    <nav class="branch-nav" aria-label="Navegar por las ramas del árbol">
+      <button type="button" data-view="payroll" aria-pressed="true">A. Nómina y pagos</button>
+      <button type="button" data-view="data" aria-pressed="false">B. Datos y documentos</button>
+      <button type="button" data-view="leave" aria-pressed="false">C. Permisos y jornada</button>
+      <button type="button" data-view="overview" aria-pressed="false">Vista completa</button>
+    </nav>
     <div class="canvas-shell">
       <div class="canvas-viewport" id="viewport" tabindex="0" aria-label="Lienzo del árbol, arrastrar para mover, rueda del mouse para hacer zoom">
         <div class="canvas-toolbar">
@@ -292,6 +341,8 @@ footer {
   var svgW = 2480, svgH = 2441;
   var MIN = 0.08, MAX = 5;
   var scale = 1, tx = 0, ty = 0;
+  var activeView = 'payroll';
+  var viewButtons = Array.prototype.slice.call(document.querySelectorAll('[data-view]'));
 
   function clampScale(s) { return Math.min(MAX, Math.max(MIN, s)); }
 
@@ -300,12 +351,39 @@ footer {
     pctBtn.textContent = Math.round(scale * 100) + '%';
   }
 
+  function setActiveView(name) {
+    activeView = name;
+    viewButtons.forEach(function (button) {
+      button.setAttribute('aria-pressed', button.getAttribute('data-view') === name ? 'true' : 'false');
+    });
+  }
+
+  function focusView(name) {
+    if (name === 'overview') {
+      fit();
+      return;
+    }
+    var views = {
+      payroll: { x:268, y:720 },
+      data: { x:268, y:1981 },
+      leave: { x:268, y:2298 }
+    };
+    var view = views[name] || views.payroll;
+    var compact = viewport.clientWidth <= 720;
+    scale = compact ? 0.85 : 1;
+    tx = (compact ? 22 : 42) - view.x * scale;
+    ty = viewport.clientHeight / 2 - view.y * scale;
+    setActiveView(name);
+    apply();
+  }
+
   function fit() {
     var vw = viewport.clientWidth, vh = viewport.clientHeight;
     var s = clampScale(Math.min(vw / svgW, vh / svgH) * 0.94);
     scale = s;
     tx = (vw - svgW * s) / 2;
     ty = (vh - svgH * s) / 2;
+    setActiveView('overview');
     apply();
   }
 
@@ -400,6 +478,11 @@ footer {
     var c = center(); zoomAt(c.x, c.y, 1 / 1.25);
   });
   document.getElementById('zoomFit').addEventListener('click', fit);
+  viewButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      focusView(button.getAttribute('data-view'));
+    });
+  });
   pctBtn.addEventListener('click', function () {
     var c = center(); zoomAt(c.x, c.y, 1 / scale);
   });
@@ -411,7 +494,9 @@ footer {
     else if (e.key === '0') { fit(); e.preventDefault(); }
   });
 
-  window.addEventListener('resize', fit);
-  fit();
+  window.addEventListener('resize', function () {
+    focusView(activeView || 'payroll');
+  });
+  focusView('payroll');
 })();
 </script>
