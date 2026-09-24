@@ -1,0 +1,417 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Árbol del Bot RRHH</title>
+<style>
+:root {
+  --canvas:#020617; --mask:#0F172A; --mask-2:#111c33;
+  --ink:#FFFFFF; --muted:#94A3B8; --dim:#475569; --border:#1E293B;
+  --frontend:#22D3EE; --backend:#34D399; --database:#A78BFA;
+  --cloud:#FBBF24; --security:#FB7185; --messagebus:#FB923C; --external:#94A3B8;
+  --frontend-fill:rgba(34,211,238,0.12); --backend-fill:rgba(52,211,153,0.12);
+  --database-fill:rgba(167,139,250,0.13); --messagebus-fill:rgba(251,146,60,0.13);
+  --external-fill:rgba(148,163,184,0.10);
+  --frontend-ontext:#012027;
+  --edge: var(--border);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --canvas:#F1F5F9; --mask:#FFFFFF; --mask-2:#EEF2F7;
+    --ink:#0B1220; --muted:#475569; --dim:#94A3B8; --border:#DCE3EC;
+    --frontend:#0891B2; --backend:#059669; --database:#7C3AED;
+    --cloud:#B45309; --security:#E11D48; --messagebus:#C2410C; --external:#64748B;
+    --frontend-fill:rgba(8,145,178,0.08); --backend-fill:rgba(5,150,105,0.08);
+    --database-fill:rgba(124,58,237,0.08); --messagebus-fill:rgba(194,65,12,0.08);
+    --external-fill:rgba(100,116,139,0.08);
+    --frontend-ontext:#F8FEFF;
+  }
+}
+
+:root[data-theme="dark"] {
+  --canvas:#020617; --mask:#0F172A; --mask-2:#111c33;
+  --ink:#FFFFFF; --muted:#94A3B8; --dim:#475569; --border:#1E293B;
+  --frontend:#22D3EE; --backend:#34D399; --database:#A78BFA;
+  --cloud:#FBBF24; --security:#FB7185; --messagebus:#FB923C; --external:#94A3B8;
+  --frontend-fill:rgba(34,211,238,0.12); --backend-fill:rgba(52,211,153,0.12);
+  --database-fill:rgba(167,139,250,0.13); --messagebus-fill:rgba(251,146,60,0.13);
+  --external-fill:rgba(148,163,184,0.10);
+  --frontend-ontext:#012027;
+}
+
+* { box-sizing:border-box; }
+
+body {
+  margin:0;
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  -webkit-font-smoothing:antialiased;
+}
+
+.page {
+  width:100%;
+  margin:0;
+  padding:2.5rem 2rem 5rem;
+  display:flex;
+  flex-direction:column;
+  gap:1.5rem;
+}
+
+.page > header, .page > .legend, .page > figure > figcaption, .page > footer {
+  max-width:1560px;
+}
+
+.eyebrow {
+  display:flex; align-items:center; gap:.75rem;
+  font-size:.625rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--frontend);
+}
+.eyebrow::before { content:''; width:8px; height:8px; border-radius:2px; background:var(--frontend); box-shadow:0 0 8px var(--frontend); }
+
+h1 {
+  margin:.5rem 0 0;
+  font-size:1.75rem; font-weight:700; line-height:1.2; letter-spacing:-.025em;
+  color:var(--ink);
+}
+
+.intro {
+  margin:.25rem 0 0;
+  max-width:74ch;
+  font-size:.8125rem; line-height:1.65; color:var(--muted);
+}
+.intro em { color:var(--ink); font-style:normal; }
+
+.legend {
+  display:flex; flex-wrap:wrap; gap:.5rem;
+  padding:1rem 1.125rem;
+  background:var(--mask);
+  border:1px solid var(--border);
+  border-radius:1rem;
+}
+
+.chip {
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.4rem .75rem;
+  border-radius:999px;
+  border:1.5px solid var(--chip-c);
+  background:var(--chip-fill);
+  font-size:.625rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted);
+}
+.chip .dot { width:8px; height:8px; border-radius:2px; background:var(--chip-c); flex:none; }
+
+.c-cat   { --chip-c:var(--frontend); --chip-fill:var(--frontend-fill); }
+.c-input { --chip-c:var(--database); --chip-fill:var(--database-fill); }
+.c-close { --chip-c:var(--backend);  --chip-fill:var(--backend-fill); }
+.c-esc   { --chip-c:var(--messagebus); --chip-fill:var(--messagebus-fill); }
+.c-note  { --chip-c:var(--external); --chip-fill:transparent; }
+.c-def   { --chip-c:var(--border); --chip-fill:var(--mask-2); }
+
+figure { margin:0; display:flex; flex-direction:column; gap:.75rem; }
+
+.canvas-shell {
+  position:relative;
+  width:100%;
+  margin:0 -2rem;
+  padding:0 2rem;
+  box-sizing:border-box;
+}
+
+.canvas-viewport {
+  position:relative;
+  width:100%;
+  height:min(80vh, 980px);
+  min-height:460px;
+  overflow:hidden;
+  background:var(--mask);
+  border:1px solid var(--border);
+  border-radius:1rem;
+  cursor:grab;
+  touch-action:none;
+  outline:none;
+}
+.canvas-viewport:focus-visible { border-color:var(--frontend); }
+.canvas-viewport.dragging { cursor:grabbing; }
+
+.canvas-inner {
+  position:absolute;
+  top:0; left:0;
+  transform-origin:0 0;
+  will-change:transform;
+}
+
+.canvas-inner svg { display:block; width:2480px; height:2441px; max-width:none; }
+
+.canvas-toolbar {
+  position:absolute;
+  top:.75rem; right:.75rem;
+  z-index:6;
+  display:flex; align-items:center; gap:.25rem;
+  padding:.25rem;
+  background:var(--mask-2);
+  border:1px solid var(--border);
+  border-radius:999px;
+}
+.canvas-toolbar button {
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--muted);
+  font-family:inherit;
+  font-size:.6875rem; font-weight:700;
+  width:1.9rem; height:1.9rem;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:999px;
+  cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.canvas-toolbar button:hover, .canvas-toolbar button:focus-visible { color:var(--frontend); border-color:var(--frontend); outline:none; }
+.canvas-toolbar .zoom-pct { width:auto; padding:0 .6rem; letter-spacing:.02em; }
+.canvas-toolbar .sep { width:1px; height:1.1rem; background:var(--border); margin:0 .15rem; }
+
+.canvas-hint {
+  position:absolute;
+  left:.75rem; bottom:.85rem;
+  z-index:6;
+  font-size:.625rem; color:var(--dim);
+  background:var(--mask-2);
+  padding:.3rem .65rem;
+  border-radius:999px;
+  border:1px solid var(--border);
+  pointer-events:none;
+}
+
+figcaption {
+  font-size:.75rem; line-height:1.6; color:var(--dim); max-width:74ch;
+}
+figcaption strong { color:var(--muted); font-weight:600; }
+
+footer {
+  font-size:.6875rem; line-height:1.6; color:var(--dim); max-width:74ch;
+  padding-top:.5rem; border-top:1px solid var(--border);
+}
+
+/* SVG node styling */
+.node rect { stroke-width:1.4px; }
+.node .lbl {
+  font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:11px;
+}
+
+.node-cat1 rect { fill:var(--frontend); stroke:var(--frontend); }
+.node-cat1 .lbl { fill:var(--frontend-ontext); font-weight:700; font-size:12.5px; }
+
+.node-cat2 rect { fill:var(--frontend-fill); stroke:var(--frontend); }
+.node-cat2 .lbl { fill:var(--frontend); font-weight:700; font-size:11.5px; }
+
+.node-default rect { fill:var(--mask-2); stroke:var(--border); }
+.node-default .lbl { fill:var(--muted); }
+
+.node-input rect { fill:var(--database-fill); stroke:var(--database); }
+.node-input .lbl { fill:var(--database); }
+
+.node-close rect { fill:var(--backend-fill); stroke:var(--backend); }
+.node-close .lbl { fill:var(--backend); font-weight:700; }
+
+.node-escalation rect { fill:var(--messagebus-fill); stroke:var(--messagebus); }
+.node-escalation .lbl { fill:var(--messagebus); }
+
+.node-note rect { fill:transparent; stroke:var(--external); stroke-dasharray:3 3; }
+.node-note .lbl { fill:var(--dim); font-style:italic; }
+
+.node-root circle { fill:var(--frontend); stroke:none; }
+.root-label {
+  font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:8.5px; font-weight:700; letter-spacing:.06em; fill:var(--frontend-ontext);
+}
+
+.edges .edge { fill:none; stroke:var(--edge); stroke-width:1.3px; }
+.arrowhead { fill:var(--edge); }
+
+@media (max-width:720px) {
+  .page { padding:1.5rem 1rem 3rem; }
+  h1 { font-size:1.375rem; }
+}
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Archify &mdash; conversation graph</div>
+    <h1>Árbol del Bot RRHH</h1>
+    <p class="intro">
+      Mapa horizontal de las preguntas y respuestas que va a implementar el bot, reconstruido a partir de
+      <em>ARBOL BOTS V1.xlsx</em>. Cada columna es un nivel de la conversación (nivel 1 al nivel 9); cada
+      ruta del arbol va desde la categoría inicial hasta el cierre o la derivación a una persona.
+    </p>
+  </header>
+
+  <div class="legend" aria-label="Leyenda de colores del diagrama">
+    <span class="chip c-cat"><span class="dot"></span>Categoría / submenú</span>
+    <span class="chip c-def"><span class="dot"></span>Paso del diálogo</span>
+    <span class="chip c-input"><span class="dot"></span>Pide un dato o adjunto</span>
+    <span class="chip c-close"><span class="dot"></span>Cierra el bot</span>
+    <span class="chip c-esc"><span class="dot"></span>Deriva a una persona / SLA 72h</span>
+    <span class="chip c-note"><span class="dot"></span>Nota interna, no es diálogo</span>
+  </div>
+
+  <figure>
+    <div class="canvas-shell">
+      <div class="canvas-viewport" id="viewport" tabindex="0" aria-label="Lienzo del árbol, arrastrar para mover, rueda del mouse para hacer zoom">
+        <div class="canvas-toolbar">
+          <button type="button" id="zoomOut" aria-label="Alejar">&minus;</button>
+          <button type="button" id="zoomPct" class="zoom-pct" aria-label="Zoom 100%">100%</button>
+          <button type="button" id="zoomIn" aria-label="Acercar">+</button>
+          <span class="sep"></span>
+          <button type="button" id="zoomFit" aria-label="Ajustar a pantalla">Ajustar</button>
+        </div>
+        <div class="canvas-hint">Rueda = zoom &middot; Arrastrar = mover &middot; Doble clic = acercar</div>
+        <div class="canvas-inner" id="canvasInner">
+<svg viewBox="0 0 2480 2441" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arbol de decision horizontal del bot de RRHH: nominas y pagos, datos y documentos, y bajas/permisos, desde INICIO hasta cada cierre o derivacion."><defs><marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="arrowhead"/></marker></defs><g class="edges"><path d="M228.0,1508.9 L248.0,1508.9 L248.0,720.0 L262.0,720.0" class="edge" marker-end="url(#arrow)"/><path d="M476.0,720.0 L496.0,720.0 L496.0,66.5 L510.0,66.5" class="edge" marker-end="url(#arrow)"/><path d="M476.0,720.0 L496.0,720.0 L496.0,395.8 L510.0,395.8" class="edge" marker-end="url(#arrow)"/><path d="M724.0,395.8 L744.0,395.8 L744.0,276.3 L758.0,276.3" class="edge" marker-end="url(#arrow)"/><path d="M972.0,276.3 L992.0,276.3 L992.0,276.3 L1006.0,276.3" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,276.3 L1240.0,276.3 L1240.0,170.4 L1254.0,170.4" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,170.4 L1488.0,170.4 L1488.0,170.4 L1502.0,170.4" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,170.4 L1736.0,170.4 L1736.0,138.0 L1750.0,138.0" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,138.0 L1984.0,138.0 L1984.0,138.0 L1998.0,138.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,170.4 L1736.0,170.4 L1736.0,202.8 L1750.0,202.8" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,202.8 L1984.0,202.8 L1984.0,202.8 L1998.0,202.8" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,276.3 L1240.0,276.3 L1240.0,289.8 L1254.0,289.8" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,289.8 L1488.0,289.8 L1488.0,289.8 L1502.0,289.8" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,289.8 L1736.0,289.8 L1736.0,267.5 L1750.0,267.5" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,267.5 L1984.0,267.5 L1984.0,267.5 L1998.0,267.5" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,289.8 L1736.0,289.8 L1736.0,312.0 L1750.0,312.0" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,312.0 L1984.0,312.0 L1984.0,312.0 L1998.0,312.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,276.3 L1240.0,276.3 L1240.0,382.2 L1254.0,382.2" class="edge" marker-end="url(#arrow)"/><path d="M724.0,395.8 L744.0,395.8 L744.0,515.2 L758.0,515.2" class="edge" marker-end="url(#arrow)"/><path d="M972.0,515.2 L992.0,515.2 L992.0,515.2 L1006.0,515.2" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,515.2 L1240.0,515.2 L1240.0,479.5 L1254.0,479.5" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,479.5 L1488.0,479.5 L1488.0,479.5 L1502.0,479.5" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,479.5 L1736.0,479.5 L1736.0,479.5 L1750.0,479.5" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,479.5 L1984.0,479.5 L1984.0,479.5 L1998.0,479.5" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,515.2 L1240.0,515.2 L1240.0,551.0 L1254.0,551.0" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,551.0 L1488.0,551.0 L1488.0,551.0 L1502.0,551.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,551.0 L1736.0,551.0 L1736.0,551.0 L1750.0,551.0" class="edge" marker-end="url(#arrow)"/><path d="M476.0,720.0 L496.0,720.0 L496.0,947.4 L510.0,947.4" class="edge" marker-end="url(#arrow)"/><path d="M724.0,947.4 L744.0,947.4 L744.0,822.6 L758.0,822.6" class="edge" marker-end="url(#arrow)"/><path d="M972.0,822.6 L992.0,822.6 L992.0,661.9 L1006.0,661.9" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,661.9 L1240.0,661.9 L1240.0,612.2 L1254.0,612.2" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,612.2 L1488.0,612.2 L1488.0,590.0 L1502.0,590.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,590.0 L1736.0,590.0 L1736.0,590.0 L1750.0,590.0" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,612.2 L1488.0,612.2 L1488.0,634.5 L1502.0,634.5" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,634.5 L1736.0,634.5 L1736.0,634.5 L1750.0,634.5" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,634.5 L1984.0,634.5 L1984.0,634.5 L1998.0,634.5" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,661.9 L1240.0,661.9 L1240.0,711.5 L1254.0,711.5" class="edge" marker-end="url(#arrow)"/><path d="M972.0,822.6 L992.0,822.6 L992.0,849.8 L1006.0,849.8" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,849.8 L1240.0,849.8 L1240.0,805.2 L1254.0,805.2" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,805.2 L1488.0,805.2 L1488.0,805.2 L1502.0,805.2" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,805.2 L1736.0,805.2 L1736.0,783.0 L1750.0,783.0" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,783.0 L1984.0,783.0 L1984.0,783.0 L1998.0,783.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,805.2 L1736.0,805.2 L1736.0,827.5 L1750.0,827.5" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,827.5 L1984.0,827.5 L1984.0,827.5 L1998.0,827.5" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,849.8 L1240.0,849.8 L1240.0,894.2 L1254.0,894.2" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,894.2 L1488.0,894.2 L1488.0,894.2 L1502.0,894.2" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,894.2 L1736.0,894.2 L1736.0,872.0 L1750.0,872.0" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,872.0 L1984.0,872.0 L1984.0,872.0 L1998.0,872.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,894.2 L1736.0,894.2 L1736.0,916.5 L1750.0,916.5" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,916.5 L1984.0,916.5 L1984.0,916.5 L1998.0,916.5" class="edge" marker-end="url(#arrow)"/><path d="M2212.0,916.5 L2232.0,916.5 L2232.0,916.5 L2246.0,916.5" class="edge" marker-end="url(#arrow)"/><path d="M972.0,822.6 L992.0,822.6 L992.0,983.2 L1006.0,983.2" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,983.2 L1240.0,983.2 L1240.0,983.2 L1254.0,983.2" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,983.2 L1488.0,983.2 L1488.0,961.0 L1502.0,961.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,961.0 L1736.0,961.0 L1736.0,961.0 L1750.0,961.0" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,983.2 L1488.0,983.2 L1488.0,1005.5 L1502.0,1005.5" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,1005.5 L1736.0,1005.5 L1736.0,1005.5 L1750.0,1005.5" class="edge" marker-end="url(#arrow)"/><path d="M724.0,947.4 L744.0,947.4 L744.0,1072.2 L758.0,1072.2" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1072.2 L992.0,1072.2 L992.0,1072.2 L1006.0,1072.2" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1072.2 L1240.0,1072.2 L1240.0,1050.0 L1254.0,1050.0" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,1050.0 L1488.0,1050.0 L1488.0,1050.0 L1502.0,1050.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1072.2 L1240.0,1072.2 L1240.0,1094.5 L1254.0,1094.5" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,1094.5 L1488.0,1094.5 L1488.0,1094.5 L1502.0,1094.5" class="edge" marker-end="url(#arrow)"/><path d="M476.0,720.0 L496.0,720.0 L496.0,1373.4 L510.0,1373.4" class="edge" marker-end="url(#arrow)"/><path d="M724.0,1373.4 L744.0,1373.4 L744.0,1189.4 L758.0,1189.4" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1189.4 L992.0,1189.4 L992.0,1189.4 L1006.0,1189.4" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1189.4 L1240.0,1189.4 L1240.0,1139.0 L1254.0,1139.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1189.4 L1240.0,1189.4 L1240.0,1239.8 L1254.0,1239.8" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,1239.8 L1488.0,1239.8 L1488.0,1200.2 L1502.0,1200.2" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,1200.2 L1736.0,1200.2 L1736.0,1200.2 L1750.0,1200.2" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,1200.2 L1984.0,1200.2 L1984.0,1178.0 L1998.0,1178.0" class="edge" marker-end="url(#arrow)"/><path d="M2212.0,1178.0 L2232.0,1178.0 L2232.0,1178.0 L2246.0,1178.0" class="edge" marker-end="url(#arrow)"/><path d="M1964.0,1200.2 L1984.0,1200.2 L1984.0,1222.5 L1998.0,1222.5" class="edge" marker-end="url(#arrow)"/><path d="M2212.0,1222.5 L2232.0,1222.5 L2232.0,1222.5 L2246.0,1222.5" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,1239.8 L1488.0,1239.8 L1488.0,1279.2 L1502.0,1279.2" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,1279.2 L1736.0,1279.2 L1736.0,1279.2 L1750.0,1279.2" class="edge" marker-end="url(#arrow)"/><path d="M724.0,1373.4 L744.0,1373.4 L744.0,1415.0 L758.0,1415.0" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1415.0 L992.0,1415.0 L992.0,1363.0 L1006.0,1363.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1363.0 L1240.0,1363.0 L1240.0,1363.0 L1254.0,1363.0" class="edge" marker-end="url(#arrow)"/><path d="M1468.0,1363.0 L1488.0,1363.0 L1488.0,1363.0 L1502.0,1363.0" class="edge" marker-end="url(#arrow)"/><path d="M1716.0,1363.0 L1736.0,1363.0 L1736.0,1363.0 L1750.0,1363.0" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1415.0 L992.0,1415.0 L992.0,1467.0 L1006.0,1467.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1467.0 L1240.0,1467.0 L1240.0,1467.0 L1254.0,1467.0" class="edge" marker-end="url(#arrow)"/><path d="M724.0,1373.4 L744.0,1373.4 L744.0,1557.5 L758.0,1557.5" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1557.5 L992.0,1557.5 L992.0,1557.5 L1006.0,1557.5" class="edge" marker-end="url(#arrow)"/><path d="M228.0,1508.9 L248.0,1508.9 L248.0,1980.6 L262.0,1980.6" class="edge" marker-end="url(#arrow)"/><path d="M476.0,1980.6 L496.0,1980.6 L496.0,1797.2 L510.0,1797.2" class="edge" marker-end="url(#arrow)"/><path d="M724.0,1797.2 L744.0,1797.2 L744.0,1634.5 L758.0,1634.5" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1634.5 L992.0,1634.5 L992.0,1634.5 L1006.0,1634.5" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1634.5 L1240.0,1634.5 L1240.0,1634.5 L1254.0,1634.5" class="edge" marker-end="url(#arrow)"/><path d="M724.0,1797.2 L744.0,1797.2 L744.0,1773.6 L758.0,1773.6" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1773.6 L992.0,1773.6 L992.0,1711.5 L1006.0,1711.5" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1711.5 L1240.0,1711.5 L1240.0,1711.5 L1254.0,1711.5" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1773.6 L992.0,1773.6 L992.0,1835.8 L1006.0,1835.8" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1835.8 L1240.0,1835.8 L1240.0,1835.8 L1254.0,1835.8" class="edge" marker-end="url(#arrow)"/><path d="M724.0,1797.2 L744.0,1797.2 L744.0,1960.0 L758.0,1960.0" class="edge" marker-end="url(#arrow)"/><path d="M972.0,1960.0 L992.0,1960.0 L992.0,1960.0 L1006.0,1960.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,1960.0 L1240.0,1960.0 L1240.0,1960.0 L1254.0,1960.0" class="edge" marker-end="url(#arrow)"/><path d="M476.0,1980.6 L496.0,1980.6 L496.0,2055.2 L510.0,2055.2" class="edge" marker-end="url(#arrow)"/><path d="M724.0,2055.2 L744.0,2055.2 L744.0,2023.5 L758.0,2023.5" class="edge" marker-end="url(#arrow)"/><path d="M972.0,2023.5 L992.0,2023.5 L992.0,2023.5 L1006.0,2023.5" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,2023.5 L1240.0,2023.5 L1240.0,2023.5 L1254.0,2023.5" class="edge" marker-end="url(#arrow)"/><path d="M724.0,2055.2 L744.0,2055.2 L744.0,2087.0 L758.0,2087.0" class="edge" marker-end="url(#arrow)"/><path d="M972.0,2087.0 L992.0,2087.0 L992.0,2087.0 L1006.0,2087.0" class="edge" marker-end="url(#arrow)"/><path d="M1220.0,2087.0 L1240.0,2087.0 L1240.0,2087.0 L1254.0,2087.0" class="edge" marker-end="url(#arrow)"/><path d="M476.0,1980.6 L496.0,1980.6 L496.0,2164.0 L510.0,2164.0" class="edge" marker-end="url(#arrow)"/><path d="M724.0,2164.0 L744.0,2164.0 L744.0,2164.0 L758.0,2164.0" class="edge" marker-end="url(#arrow)"/><path d="M972.0,2164.0 L992.0,2164.0 L992.0,2164.0 L1006.0,2164.0" class="edge" marker-end="url(#arrow)"/><path d="M228.0,1508.9 L248.0,1508.9 L248.0,2297.8 L262.0,2297.8" class="edge" marker-end="url(#arrow)"/><path d="M476.0,2297.8 L496.0,2297.8 L496.0,2234.2 L510.0,2234.2" class="edge" marker-end="url(#arrow)"/><path d="M724.0,2234.2 L744.0,2234.2 L744.0,2234.2 L758.0,2234.2" class="edge" marker-end="url(#arrow)"/><path d="M972.0,2234.2 L992.0,2234.2 L992.0,2234.2 L1006.0,2234.2" class="edge" marker-end="url(#arrow)"/><path d="M476.0,2297.8 L496.0,2297.8 L496.0,2297.8 L510.0,2297.8" class="edge" marker-end="url(#arrow)"/><path d="M724.0,2297.8 L744.0,2297.8 L744.0,2297.8 L758.0,2297.8" class="edge" marker-end="url(#arrow)"/><path d="M972.0,2297.8 L992.0,2297.8 L992.0,2297.8 L1006.0,2297.8" class="edge" marker-end="url(#arrow)"/><path d="M476.0,2297.8 L496.0,2297.8 L496.0,2361.2 L510.0,2361.2" class="edge" marker-end="url(#arrow)"/><path d="M724.0,2361.2 L744.0,2361.2 L744.0,2361.2 L758.0,2361.2" class="edge" marker-end="url(#arrow)"/><path d="M972.0,2361.2 L992.0,2361.2 L992.0,2361.2 L1006.0,2361.2" class="edge" marker-end="url(#arrow)"/></g><g class="nodes"><g class="node-root"><circle cx="35.0" cy="1508.9" r="17"/><text x="35.0" y="1512.4" text-anchor="middle" class="root-label">INICIO</text></g><g class="node node-cat1"><rect x="268.0" y="706.0" width="208.0" height="28.0" rx="3"/><text x="279.0" y="723.0" class="lbl">A. Mi nómina y mis pagos</text></g><g class="node node-note"><rect x="516.0" y="20.0" width="208.0" height="93.0" rx="3"/><text x="527.0" y="37.0" class="lbl">(que la IA detecte si el</text><text x="527.0" y="50.5" class="lbl">neto de la persona es</text><text x="527.0" y="64.0" class="lbl">positivo o negativo y en</text><text x="527.0" y="77.5" class="lbl">base a eso responda a  si</text><text x="527.0" y="91.0" class="lbl">es positivo o b si es</text><text x="527.0" y="104.5" class="lbl">negativo)</text></g><g class="node node-cat2"><rect x="516.0" y="376.3" width="208.0" height="39.0" rx="3"/><text x="527.0" y="393.3" class="lbl">A1. Cobro y recibo de</text><text x="527.0" y="406.8" class="lbl">nómina</text></g><g class="node node-default"><rect x="764.0" y="256.8" width="208.0" height="39.0" rx="3"/><text x="775.0" y="273.8" class="lbl">A1.1. No me ha llegado el</text><text x="775.0" y="287.3" class="lbl">dinero</text></g><g class="node node-input"><rect x="1012.0" y="256.8" width="208.0" height="39.0" rx="3"/><text x="1023.0" y="273.8" class="lbl">A1.1.1 MES (PICAR EL MES</text><text x="1023.0" y="287.3" class="lbl">QUE RECLAMA)</text></g><g class="node node-default"><rect x="1260.0" y="156.4" width="208.0" height="28.0" rx="3"/><text x="1271.0" y="173.4" class="lbl">A1.1.1.1 (POSITIVA)</text></g><g class="node node-default"><rect x="1508.0" y="117.1" width="208.0" height="106.5" rx="3"/><text x="1519.0" y="134.1" class="lbl">A1.1.1.1 El pago de la</text><text x="1519.0" y="147.6" class="lbl">nómina ya se ha realizado (</text><text x="1519.0" y="161.1" class="lbl">DEPENDE EN QUE FECHA NOS</text><text x="1519.0" y="174.6" class="lbl">LOS ENVIAN). Puede tardar</text><text x="1519.0" y="188.1" class="lbl">hasta 48 horas laborables</text><text x="1519.0" y="201.6" class="lbl">en verse reflejado en tu</text><text x="1519.0" y="215.1" class="lbl">cuenta bancaria.</text></g><g class="node node-default"><rect x="1756.0" y="124.0" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="141.0" class="lbl">A1.1.1.1.1 OK, GRACIAS</text></g><g class="node node-close"><rect x="2004.0" y="124.0" width="208.0" height="28.0" rx="3"/><text x="2015.0" y="141.0" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="1756.0" y="183.2" width="208.0" height="39.0" rx="3"/><text x="1767.0" y="200.2" class="lbl">A1.1.1.1.2 SIGO SIN</text><text x="1767.0" y="213.8" class="lbl">RECIBIRLO</text></g><g class="node node-escalation"><rect x="2004.0" y="163.0" width="208.0" height="79.5" rx="3"/><text x="2015.0" y="180.0" class="lbl">HEMOS DERIVADO TU CONSULTA</text><text x="2015.0" y="193.5" class="lbl">AL DEPARTAMIENTO LABORAL,</text><text x="2015.0" y="207.0" class="lbl">EN 72 HORAS LABORABLES TE</text><text x="2015.0" y="220.5" class="lbl">AYUDAREMOS CON TU</text><text x="2015.0" y="234.0" class="lbl">INCIDENCIA.</text></g><g class="node node-default"><rect x="1260.0" y="275.8" width="208.0" height="28.0" rx="3"/><text x="1271.0" y="292.8" class="lbl">A1.1.1.2 (NEGATIVA)</text></g><g class="node node-default"><rect x="1508.0" y="229.8" width="208.0" height="120.0" rx="3"/><text x="1519.0" y="246.8" class="lbl">A1.1.1.2  Se ha detectado</text><text x="1519.0" y="260.2" class="lbl">que el importe tu nomina es</text><text x="1519.0" y="273.8" class="lbl">Negativo, por lo cual no</text><text x="1519.0" y="287.2" class="lbl">tienes ninguna</text><text x="1519.0" y="300.8" class="lbl">transferencia a realizar,</text><text x="1519.0" y="314.2" class="lbl">por favor, verificar el</text><text x="1519.0" y="327.8" class="lbl">recibo de nomina que te</text><text x="1519.0" y="341.2" class="lbl">hemos enviado.</text></g><g class="node node-default"><rect x="1756.0" y="253.5" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="270.5" class="lbl">A1.1.1.2.1 OK, GRACIAS</text></g><g class="node node-close"><rect x="2004.0" y="253.5" width="208.0" height="28.0" rx="3"/><text x="2015.0" y="270.5" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="1756.0" y="292.5" width="208.0" height="39.0" rx="3"/><text x="1767.0" y="309.5" class="lbl">A1.1.1.2.2 NO HE RECIBIDO</text><text x="1767.0" y="323.0" class="lbl">MI RECIBO</text></g><g class="node node-default"><rect x="2004.0" y="292.5" width="208.0" height="39.0" rx="3"/><text x="2015.0" y="309.5" class="lbl">QUE SE ENVIE EL RECIBO</text><text x="2015.0" y="323.0" class="lbl">AUTOMATICAMANTE</text></g><g class="node node-note"><rect x="1260.0" y="342.5" width="208.0" height="79.5" rx="3"/><text x="1271.0" y="359.5" class="lbl">(TENEMOS QUE DETERMINAR EN</text><text x="1271.0" y="373.0" class="lbl">QUE FECHA LO PREGUNTA, Y</text><text x="1271.0" y="386.5" class="lbl">QUE MES PARA SABER SI SE</text><text x="1271.0" y="400.0" class="lbl">HAN ENVIADO O NO, EN BASE A</text><text x="1271.0" y="413.5" class="lbl">ESO ES LA RESPUESTA</text></g><g class="node node-default"><rect x="764.0" y="495.8" width="208.0" height="39.0" rx="3"/><text x="775.0" y="512.8" class="lbl">A1.2. No tengo mi recibo de</text><text x="775.0" y="526.2" class="lbl">nómina (PDF)</text></g><g class="node node-input"><rect x="1012.0" y="495.8" width="208.0" height="39.0" rx="3"/><text x="1023.0" y="512.8" class="lbl">A1.2.1 MES (PICAR EL MES</text><text x="1023.0" y="526.2" class="lbl">QUE RECLAMA)</text></g><g class="node node-default"><rect x="1260.0" y="465.5" width="208.0" height="28.0" rx="3"/><text x="1271.0" y="482.5" class="lbl">A1.2.1.1 YA ENVIADOS</text></g><g class="node node-default"><rect x="1508.0" y="460.0" width="208.0" height="39.0" rx="3"/><text x="1519.0" y="477.0" class="lbl">QUE SE REENVIE</text><text x="1519.0" y="490.5" class="lbl">AUTOMATICAMENTE</text></g><g class="node node-escalation"><rect x="1756.0" y="433.0" width="208.0" height="93.0" rx="3"/><text x="1767.0" y="450.0" class="lbl">en el caso que ya fueron</text><text x="1767.0" y="463.5" class="lbl">enviados y la persona sigue</text><text x="1767.0" y="477.0" class="lbl">sin recibirlo que lo derive</text><text x="1767.0" y="490.5" class="lbl">a laboral. Y en 72  horas</text><text x="1767.0" y="504.0" class="lbl">laborables analizamos su</text><text x="1767.0" y="517.5" class="lbl">caso</text></g><g class="node node-note"><rect x="2004.0" y="433.0" width="208.0" height="93.0" rx="3"/><text x="2015.0" y="450.0" class="lbl">NOTA: TENEMOS QUE VER SI SE</text><text x="2015.0" y="463.5" class="lbl">REENVIA PERO QUIZAS LA</text><text x="2015.0" y="477.0" class="lbl">PERSONA CAMBIO EL CORREO O</text><text x="2015.0" y="490.5" class="lbl">QUIERE OTRO, DE CAMBIARLO.</text><text x="2015.0" y="504.0" class="lbl">VER SI LE PREGUNTAMOS EN EL</text><text x="2015.0" y="517.5" class="lbl">BOT EL CORREO,</text></g><g class="node node-default"><rect x="1260.0" y="531.5" width="208.0" height="39.0" rx="3"/><text x="1271.0" y="548.5" class="lbl">A1.2.1.2 TODAVIA NOLO HEMOS</text><text x="1271.0" y="562.0" class="lbl">ENVIADOS</text></g><g class="node node-default"><rect x="1508.0" y="504.5" width="208.0" height="93.0" rx="3"/><text x="1519.0" y="521.5" class="lbl">Estamos finalizando este</text><text x="1519.0" y="535.0" class="lbl">proceso, cuando lo</text><text x="1519.0" y="548.5" class="lbl">tengamos, se procederá a la</text><text x="1519.0" y="562.0" class="lbl">emisión de la documentación</text><text x="1519.0" y="575.5" class="lbl">correspondiente atráves de</text><text x="1519.0" y="589.0" class="lbl">tu correo electronico</text></g><g class="node node-close"><rect x="1756.0" y="537.0" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="554.0" class="lbl">CIERRA BOT.</text></g><g class="node node-cat2"><rect x="516.0" y="933.4" width="208.0" height="28.0" rx="3"/><text x="527.0" y="950.4" class="lbl">A2. Importes de mi nómina</text></g><g class="node node-default"><rect x="764.0" y="808.6" width="208.0" height="28.0" rx="3"/><text x="775.0" y="825.6" class="lbl">A2.1. CONSULTA DE VARIABLES</text></g><g class="node node-default"><rect x="1012.0" y="647.9" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="664.9" class="lbl">A2.1.1 VARIABLES</text></g><g class="node node-default"><rect x="1260.0" y="532.0" width="208.0" height="160.5" rx="3"/><text x="1271.0" y="549.0" class="lbl">A2.1.1.1 Las variables que</text><text x="1271.0" y="562.5" class="lbl">aparecen en la nómina</text><text x="1271.0" y="576.0" class="lbl">corresponden al periodo de</text><text x="1271.0" y="589.5" class="lbl">variables entre el (xx-xx-</text><text x="1271.0" y="603.0" class="lbl">xxxx) hasta el (xx-xx-xxxx)</text><text x="1271.0" y="616.5" class="lbl">y no al mes en que se</text><text x="1271.0" y="630.0" class="lbl">recibe el pago.Por este</text><text x="1271.0" y="643.5" class="lbl">motivo, las variables con</text><text x="1271.0" y="657.0" class="lbl">posterioridad al (fecha) no</text><text x="1271.0" y="670.5" class="lbl">están incluidas en la</text><text x="1271.0" y="684.0" class="lbl">nómina (mes) y serán…</text></g><g class="node node-default"><rect x="1508.0" y="576.0" width="208.0" height="28.0" rx="3"/><text x="1519.0" y="593.0" class="lbl">A2.1.1.1.1 OK GRACIAS</text></g><g class="node node-close"><rect x="1756.0" y="576.0" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="593.0" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="1508.0" y="615.0" width="208.0" height="39.0" rx="3"/><text x="1519.0" y="632.0" class="lbl">A2.1.1.1.2 NO ESTOY DE</text><text x="1519.0" y="645.5" class="lbl">ACUERDO</text></g><g class="node node-input"><rect x="1756.0" y="620.5" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="637.5" class="lbl">OPCION PARA PICAR</text></g><g class="node node-escalation"><rect x="2004.0" y="615.0" width="208.0" height="39.0" rx="3"/><text x="2015.0" y="632.0" class="lbl">QUE EN 72 HORAS LABORABLES</text><text x="2015.0" y="645.5" class="lbl">TENDRA UNA RESPUESTA</text></g><g class="node node-note"><rect x="1260.0" y="665.0" width="208.0" height="93.0" rx="3"/><text x="1271.0" y="682.0" class="lbl">(que la IA detecte si el</text><text x="1271.0" y="695.5" class="lbl">neto de la persona es</text><text x="1271.0" y="709.0" class="lbl">positivo o negativo y en</text><text x="1271.0" y="722.5" class="lbl">base a eso responda a  si</text><text x="1271.0" y="736.0" class="lbl">es positivo o b si es</text><text x="1271.0" y="749.5" class="lbl">negativo)</text></g><g class="node node-default"><rect x="1012.0" y="835.8" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="852.8" class="lbl">A2.1.2 CASH</text></g><g class="node node-default"><rect x="1260.0" y="791.2" width="208.0" height="28.0" rx="3"/><text x="1271.0" y="808.2" class="lbl">A2.1.2.1 POSITIVO</text></g><g class="node node-default"><rect x="1508.0" y="738.5" width="208.0" height="133.5" rx="3"/><text x="1519.0" y="755.5" class="lbl">A2.1.2.1.1 Hemos revisado</text><text x="1519.0" y="769.0" class="lbl">tu caso y te confirmamos</text><text x="1519.0" y="782.5" class="lbl">que el importe</text><text x="1519.0" y="796.0" class="lbl">correspondiente al</text><text x="1519.0" y="809.5" class="lbl">concepto “BALANCE</text><text x="1519.0" y="823.0" class="lbl">EFECTIVO”, al aparecer en</text><text x="1519.0" y="836.5" class="lbl">negativo en la columna</text><text x="1519.0" y="850.0" class="lbl">de Deducciones, supone</text><text x="1519.0" y="863.5" class="lbl">una devolución a tu favor.</text></g><g class="node node-default"><rect x="1756.0" y="769.0" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="786.0" class="lbl">A2.1.2.1.1.1 OK GRACIAS</text></g><g class="node node-close"><rect x="2004.0" y="769.0" width="208.0" height="28.0" rx="3"/><text x="2015.0" y="786.0" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="1756.0" y="808.0" width="208.0" height="39.0" rx="3"/><text x="1767.0" y="825.0" class="lbl">A2.1.2.1.1.2 NECESITO QUE</text><text x="1767.0" y="838.5" class="lbl">SE REVISE MI CASO</text></g><g class="node node-escalation"><rect x="2004.0" y="808.0" width="208.0" height="39.0" rx="3"/><text x="2015.0" y="825.0" class="lbl">QUE EN 72 HORAS LABORABLES</text><text x="2015.0" y="838.5" class="lbl">TENDRA UNA RESPUESTA</text></g><g class="node node-default"><rect x="1260.0" y="880.2" width="208.0" height="28.0" rx="3"/><text x="1271.0" y="897.2" class="lbl">A2.1.2.2 NEGATIVO</text></g><g class="node node-default"><rect x="1508.0" y="814.0" width="208.0" height="160.5" rx="3"/><text x="1519.0" y="831.0" class="lbl">A2.1.2.1.2 El descuento es</text><text x="1519.0" y="844.5" class="lbl">la diferencia entre el</text><text x="1519.0" y="858.0" class="lbl">efectivo acumulado y lo</text><text x="1519.0" y="871.5" class="lbl">recibido en la cuenta de la</text><text x="1519.0" y="885.0" class="lbl">empresa durante el periodo</text><text x="1519.0" y="898.5" class="lbl">de variables (FECHAS</text><text x="1519.0" y="912.0" class="lbl">PERIODO)  Si el ingreso se</text><text x="1519.0" y="925.5" class="lbl">hizo el último día del</text><text x="1519.0" y="939.0" class="lbl">periodo o después, se</text><text x="1519.0" y="952.5" class="lbl">contabiliza en el periodo</text><text x="1519.0" y="966.0" class="lbl">siguiente.   Si aporta…</text></g><g class="node node-default"><rect x="1756.0" y="858.0" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="875.0" class="lbl">A2.1.2.1.2.1 OK GRACIAS</text></g><g class="node node-close"><rect x="2004.0" y="858.0" width="208.0" height="28.0" rx="3"/><text x="2015.0" y="875.0" class="lbl">CIERRA BOT.</text></g><g class="node node-input"><rect x="1756.0" y="897.0" width="208.0" height="39.0" rx="3"/><text x="1767.0" y="914.0" class="lbl">A2.1.2.2.2.2 QUIERO</text><text x="1767.0" y="927.5" class="lbl">ADJUNTAR COMPROBANTES</text></g><g class="node node-input"><rect x="2004.0" y="902.5" width="208.0" height="28.0" rx="3"/><text x="2015.0" y="919.5" class="lbl">ADJUNTA COMPROBANTES</text></g><g class="node node-escalation"><rect x="2252.0" y="897.0" width="208.0" height="39.0" rx="3"/><text x="2263.0" y="914.0" class="lbl">QUE EN 72 HORAS LABORABLES</text><text x="2263.0" y="927.5" class="lbl">TENDRA UNA RESPUESTA</text></g><g class="node node-default"><rect x="1012.0" y="969.2" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="986.2" class="lbl">A2.1.3 PENALIZACION</text></g><g class="node node-default"><rect x="1260.0" y="903.0" width="208.0" height="160.5" rx="3"/><text x="1271.0" y="920.0" class="lbl">A2.1.3.1 Este concepto hace</text><text x="1271.0" y="933.5" class="lbl">referencia a que no has</text><text x="1271.0" y="947.0" class="lbl">alcanzado la UTR mínima</text><text x="1271.0" y="960.5" class="lbl">exigida en tu ciudad, que</text><text x="1271.0" y="974.0" class="lbl">es del [XX,X %], o bien a</text><text x="1271.0" y="987.5" class="lbl">que no has trabajado todas</text><text x="1271.0" y="1001.0" class="lbl">las horas correspondientes</text><text x="1271.0" y="1014.5" class="lbl">al periodo evaluado.  Si lo</text><text x="1271.0" y="1028.0" class="lbl">deseas, podemos revisar tu</text><text x="1271.0" y="1041.5" class="lbl">caso para comprobar el</text><text x="1271.0" y="1055.0" class="lbl">motivo concreto del ajuste…</text></g><g class="node node-default"><rect x="1508.0" y="947.0" width="208.0" height="28.0" rx="3"/><text x="1519.0" y="964.0" class="lbl">A2.1.3.1.1 NO, GRACIAS</text></g><g class="node node-close"><rect x="1756.0" y="947.0" width="208.0" height="28.0" rx="3"/><text x="1767.0" y="964.0" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="1508.0" y="986.0" width="208.0" height="39.0" rx="3"/><text x="1519.0" y="1003.0" class="lbl">A2.1.3.1.2 SI POR FAVOR,</text><text x="1519.0" y="1016.5" class="lbl">REVISAR</text></g><g class="node node-escalation"><rect x="1756.0" y="986.0" width="208.0" height="39.0" rx="3"/><text x="1767.0" y="1003.0" class="lbl">QUE EN 72 HORAS LABORABLES</text><text x="1767.0" y="1016.5" class="lbl">TENDRA UNA RESPUESTA</text></g><g class="node node-default"><rect x="764.0" y="1052.8" width="208.0" height="39.0" rx="3"/><text x="775.0" y="1069.8" class="lbl">A2.2. Mi salario base o el</text><text x="775.0" y="1083.2" class="lbl">total no es lo que esperaba</text></g><g class="node node-default"><rect x="1012.0" y="992.0" width="208.0" height="160.5" rx="3"/><text x="1023.0" y="1009.0" class="lbl">Tu nómina incluye el</text><text x="1023.0" y="1022.5" class="lbl">salario base, los conceptos</text><text x="1023.0" y="1036.0" class="lbl">salariales correspondientes</text><text x="1023.0" y="1049.5" class="lbl">(como plus de peligrosidad</text><text x="1023.0" y="1063.0" class="lbl">o compensación por uso del</text><text x="1023.0" y="1076.5" class="lbl">móvil personal) y la</text><text x="1023.0" y="1090.0" class="lbl">prorrata de las pagas</text><text x="1023.0" y="1103.5" class="lbl">extra, según las horas</text><text x="1023.0" y="1117.0" class="lbl">establecidas en tu</text><text x="1023.0" y="1130.5" class="lbl">contrato.  Si durante el</text><text x="1023.0" y="1144.0" class="lbl">periodo de cálculo…</text></g><g class="node node-default"><rect x="1260.0" y="1030.5" width="208.0" height="39.0" rx="3"/><text x="1271.0" y="1047.5" class="lbl">A2.1.3.1.1 ES CORRECTO,</text><text x="1271.0" y="1061.0" class="lbl">GRACIAS</text></g><g class="node node-close"><rect x="1508.0" y="1036.0" width="208.0" height="28.0" rx="3"/><text x="1519.0" y="1053.0" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="1260.0" y="1075.0" width="208.0" height="39.0" rx="3"/><text x="1271.0" y="1092.0" class="lbl">A2.1.3.1.1.2 SI POR FAVOR,</text><text x="1271.0" y="1105.5" class="lbl">REVISAR</text></g><g class="node node-escalation"><rect x="1508.0" y="1075.0" width="208.0" height="39.0" rx="3"/><text x="1519.0" y="1092.0" class="lbl">QUE EN 72 HORAS LABORABLES</text><text x="1519.0" y="1105.5" class="lbl">TENDRA UNA RESPUESTA</text></g><g class="node node-cat2"><rect x="516.0" y="1359.4" width="208.0" height="28.0" rx="3"/><text x="527.0" y="1376.4" class="lbl">A3. Finiquito</text></g><g class="node node-default"><rect x="764.0" y="1163.1" width="208.0" height="52.5" rx="3"/><text x="775.0" y="1180.1" class="lbl">A3.1. ¿Cuándo cobro el</text><text x="775.0" y="1193.6" class="lbl">finiquito y los días</text><text x="775.0" y="1207.1" class="lbl">trabajados?</text></g><g class="node node-default"><rect x="1012.0" y="1109.1" width="208.0" height="160.5" rx="3"/><text x="1023.0" y="1126.1" class="lbl">A3.1.1 Te informamos de que</text><text x="1023.0" y="1139.6" class="lbl">el finiquito incluye</text><text x="1023.0" y="1153.1" class="lbl">conceptos variables que</text><text x="1023.0" y="1166.6" class="lbl">deben calcularse una vez</text><text x="1023.0" y="1180.1" class="lbl">cerrado el mes</text><text x="1023.0" y="1193.6" class="lbl">correspondiente.  Por este</text><text x="1023.0" y="1207.1" class="lbl">motivo, la gestión y el</text><text x="1023.0" y="1220.6" class="lbl">pago del finiquito y la</text><text x="1023.0" y="1234.1" class="lbl">nomina se realizan en forma</text><text x="1023.0" y="1247.6" class="lbl">conjunta el día 15 del mes</text><text x="1023.0" y="1261.1" class="lbl">siguiente a la fecha de…</text></g><g class="node node-default"><rect x="1260.0" y="1125.0" width="208.0" height="28.0" rx="3"/><text x="1271.0" y="1142.0" class="lbl">A3.1.1.1 OK GRACIAS</text></g><g class="node node-default"><rect x="1260.0" y="1220.2" width="208.0" height="39.0" rx="3"/><text x="1271.0" y="1237.2" class="lbl">A3.1.1.2 SIGO SIN RECIBIR</text><text x="1271.0" y="1250.8" class="lbl">MI PAGO</text></g><g class="node node-default"><rect x="1508.0" y="1167.2" width="208.0" height="66.0" rx="3"/><text x="1519.0" y="1184.2" class="lbl">A3.1.1.2.1   IA, BUSQUE SI</text><text x="1519.0" y="1197.8" class="lbl">LA NOMINA ES NEGATIVA. SI</text><text x="1519.0" y="1211.2" class="lbl">AL COMPENSARSE QUEDA</text><text x="1519.0" y="1224.8" class="lbl">NEGATIVO.</text></g><g class="node node-default"><rect x="1756.0" y="1120.0" width="208.0" height="160.5" rx="3"/><text x="1767.0" y="1137.0" class="lbl">A3.1.1.2.1.1 La nómina</text><text x="1767.0" y="1150.5" class="lbl">presenta un saldo negativo</text><text x="1767.0" y="1164.0" class="lbl">de 553,64 €, mientras que</text><text x="1767.0" y="1177.5" class="lbl">el importe correspondiente</text><text x="1767.0" y="1191.0" class="lbl">a tu finiquito es de 246,78</text><text x="1767.0" y="1204.5" class="lbl">€. Al compensar ambos</text><text x="1767.0" y="1218.0" class="lbl">importes, no queda ningún</text><text x="1767.0" y="1231.5" class="lbl">importe pendiente de abono</text><text x="1767.0" y="1245.0" class="lbl">a tu favor. Por este</text><text x="1767.0" y="1258.5" class="lbl">motivo, no se ha realizado</text><text x="1767.0" y="1272.0" class="lbl">ningún pago adicional, ya…</text></g><g class="node node-default"><rect x="2004.0" y="1164.0" width="208.0" height="28.0" rx="3"/><text x="2015.0" y="1181.0" class="lbl">A3.1.1.2.1.1. 1 OK GRACIAS</text></g><g class="node node-close"><rect x="2252.0" y="1164.0" width="208.0" height="28.0" rx="3"/><text x="2263.0" y="1181.0" class="lbl">CIERRA BOT.</text></g><g class="node node-default"><rect x="2004.0" y="1203.0" width="208.0" height="39.0" rx="3"/><text x="2015.0" y="1220.0" class="lbl">A3.1.1.2.1.1.2 REVISAR MI</text><text x="2015.0" y="1233.5" class="lbl">CASO</text></g><g class="node node-escalation"><rect x="2252.0" y="1203.0" width="208.0" height="39.0" rx="3"/><text x="2263.0" y="1220.0" class="lbl">QUE EN 72 HORAS LABORABLES</text><text x="2263.0" y="1233.5" class="lbl">TENDRA UNA RESPUESTA</text></g><g class="node node-default"><rect x="1508.0" y="1259.8" width="208.0" height="39.0" rx="3"/><text x="1519.0" y="1276.8" class="lbl">A3.1.1.2.2 IA, BUSQUE SI LA</text><text x="1519.0" y="1290.2" class="lbl">NOMINA ES  POSITIVA</text></g><g class="node node-escalation"><rect x="1756.0" y="1253.0" width="208.0" height="52.5" rx="3"/><text x="1767.0" y="1270.0" class="lbl">A3.1.1.2.2.1 QUE EN 72</text><text x="1767.0" y="1283.5" class="lbl">HORAS LABORABLES TENDRA UNA</text><text x="1767.0" y="1297.0" class="lbl">RESPUESTA</text></g><g class="node node-default"><rect x="764.0" y="1395.5" width="208.0" height="39.0" rx="3"/><text x="775.0" y="1412.5" class="lbl">A3.2. Documento de</text><text x="775.0" y="1426.0" class="lbl">finiquito</text></g><g class="node node-default"><rect x="1012.0" y="1349.0" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="1366.0" class="lbl">A3.2.1 YA ENVIADOS</text></g><g class="node node-default"><rect x="1260.0" y="1343.5" width="208.0" height="39.0" rx="3"/><text x="1271.0" y="1360.5" class="lbl">QUE SE REENVIE</text><text x="1271.0" y="1374.0" class="lbl">AUTOMATICAMENTE</text></g><g class="node node-escalation"><rect x="1508.0" y="1316.5" width="208.0" height="93.0" rx="3"/><text x="1519.0" y="1333.5" class="lbl">en el caso que ya fueron</text><text x="1519.0" y="1347.0" class="lbl">enviados y la persona sigue</text><text x="1519.0" y="1360.5" class="lbl">sin recibirlo que lo derive</text><text x="1519.0" y="1374.0" class="lbl">a laboral. Y en 72  horas</text><text x="1519.0" y="1387.5" class="lbl">laborables analizamos su</text><text x="1519.0" y="1401.0" class="lbl">caso</text></g><g class="node node-note"><rect x="1756.0" y="1316.5" width="208.0" height="93.0" rx="3"/><text x="1767.0" y="1333.5" class="lbl">NOTA: TENEMOS QUE VER SI SE</text><text x="1767.0" y="1347.0" class="lbl">REENVIA PERO QUIZAS LA</text><text x="1767.0" y="1360.5" class="lbl">PERSONA CAMBIO EL CORREO O</text><text x="1767.0" y="1374.0" class="lbl">QUIERE OTRO, DE CAMBIARLO.</text><text x="1767.0" y="1387.5" class="lbl">VER SI LE PREGUNTAMOS EN EL</text><text x="1767.0" y="1401.0" class="lbl">BOT EL CORREO,</text></g><g class="node node-default"><rect x="1012.0" y="1447.5" width="208.0" height="39.0" rx="3"/><text x="1023.0" y="1464.5" class="lbl">A3.2.2 TODAVIA NOLO HEMOS</text><text x="1023.0" y="1478.0" class="lbl">ENVIADOS</text></g><g class="node node-default"><rect x="1260.0" y="1420.5" width="208.0" height="93.0" rx="3"/><text x="1271.0" y="1437.5" class="lbl">Estamos finalizando este</text><text x="1271.0" y="1451.0" class="lbl">proceso, cuando lo</text><text x="1271.0" y="1464.5" class="lbl">tengamos, se procederá a la</text><text x="1271.0" y="1478.0" class="lbl">emisión de la documentación</text><text x="1271.0" y="1491.5" class="lbl">correspondiente atráves de</text><text x="1271.0" y="1505.0" class="lbl">tu correo electronico</text></g><g class="node node-default"><rect x="764.0" y="1538.0" width="208.0" height="39.0" rx="3"/><text x="775.0" y="1555.0" class="lbl">A3.3. No estoy de acuerdo</text><text x="775.0" y="1568.5" class="lbl">con el importe</text></g><g class="node node-escalation"><rect x="1012.0" y="1524.5" width="208.0" height="66.0" rx="3"/><text x="1023.0" y="1541.5" class="lbl">POR FAVOR INDIQUE QUE</text><text x="1023.0" y="1555.0" class="lbl">CONCEPTO NO ESTA DE ACUERDO</text><text x="1023.0" y="1568.5" class="lbl">Y EN 72 HORAS LABORABLES</text><text x="1023.0" y="1582.0" class="lbl">ATENDEREMOS TU CONSULTA.</text></g><g class="node node-cat1"><rect x="268.0" y="1966.6" width="208.0" height="28.0" rx="3"/><text x="279.0" y="1983.6" class="lbl">B. Mis datos y documentos</text></g><g class="node node-cat2"><rect x="516.0" y="1783.2" width="208.0" height="28.0" rx="3"/><text x="527.0" y="1800.2" class="lbl">B1. Datos personales</text></g><g class="node node-default"><rect x="764.0" y="1615.0" width="208.0" height="39.0" rx="3"/><text x="775.0" y="1632.0" class="lbl">B1.1. Cambiar mi cuenta</text><text x="775.0" y="1645.5" class="lbl">bancaria (IBAN)</text></g><g class="node node-input"><rect x="1012.0" y="1608.2" width="208.0" height="52.5" rx="3"/><text x="1023.0" y="1625.2" class="lbl">B1.1.1 ADJUNTAR EL</text><text x="1023.0" y="1638.8" class="lbl">CERTIFICADO DE TITULARIDAD</text><text x="1023.0" y="1652.2" class="lbl">BANCARIA</text></g><g class="node node-escalation"><rect x="1260.0" y="1601.5" width="208.0" height="66.0" rx="3"/><text x="1271.0" y="1618.5" class="lbl">QUE LA PETICION LLEGUE A</text><text x="1271.0" y="1632.0" class="lbl">LABORAL Y LE PODAMOS</text><text x="1271.0" y="1645.5" class="lbl">NOTIFICAR CUANDO ESTE</text><text x="1271.0" y="1659.0" class="lbl">REALIZADO</text></g><g class="node node-default"><rect x="764.0" y="1759.6" width="208.0" height="28.0" rx="3"/><text x="775.0" y="1776.6" class="lbl">B1.2. Cambiar mi % de IRPF</text></g><g class="node node-default"><rect x="1012.0" y="1697.5" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="1714.5" class="lbl">B1.2.1 AUMENTAR %</text></g><g class="node node-escalation"><rect x="1260.0" y="1678.5" width="208.0" height="66.0" rx="3"/><text x="1271.0" y="1695.5" class="lbl">QUE LA PETICION LLEGUE A</text><text x="1271.0" y="1709.0" class="lbl">LABORAL Y LE PODAMOS</text><text x="1271.0" y="1722.5" class="lbl">NOTIFICAR CUANDO ESTE</text><text x="1271.0" y="1736.0" class="lbl">REALIZADO</text></g><g class="node node-default"><rect x="1012.0" y="1821.8" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="1838.8" class="lbl">B1.2.2 BAJAR %</text></g><g class="node node-default"><rect x="1260.0" y="1755.5" width="208.0" height="160.5" rx="3"/><text x="1271.0" y="1772.5" class="lbl">El IRPF lo calcula</text><text x="1271.0" y="1786.0" class="lbl">automáticamente el programa</text><text x="1271.0" y="1799.5" class="lbl">en función de tus datos. No</text><text x="1271.0" y="1813.0" class="lbl">es posible reducirlo por</text><text x="1271.0" y="1826.5" class="lbl">debajo del porcentaje que</text><text x="1271.0" y="1840.0" class="lbl">determina el cálculo</text><text x="1271.0" y="1853.5" class="lbl">automático. Por este</text><text x="1271.0" y="1867.0" class="lbl">motivo, en este caso</text><text x="1271.0" y="1880.5" class="lbl">concreto no se ha</text><text x="1271.0" y="1894.0" class="lbl">modificado el cálculo del</text><text x="1271.0" y="1907.5" class="lbl">IRPF</text></g><g class="node node-default"><rect x="764.0" y="1940.5" width="208.0" height="39.0" rx="3"/><text x="775.0" y="1957.5" class="lbl">B1.3. Actualizar DNI/NIE u</text><text x="775.0" y="1971.0" class="lbl">otros datos</text></g><g class="node node-input"><rect x="1012.0" y="1946.0" width="208.0" height="28.0" rx="3"/><text x="1023.0" y="1963.0" class="lbl">ADJUNTE EL DNI NUEVO</text></g><g class="node node-escalation"><rect x="1260.0" y="1927.0" width="208.0" height="66.0" rx="3"/><text x="1271.0" y="1944.0" class="lbl">QUE LA PETICION LLEGUE A</text><text x="1271.0" y="1957.5" class="lbl">LABORAL Y LE PODAMOS</text><text x="1271.0" y="1971.0" class="lbl">NOTIFICAR CUANDO ESTE</text><text x="1271.0" y="1984.5" class="lbl">REALIZADO</text></g><g class="node node-cat2"><rect x="516.0" y="2041.2" width="208.0" height="28.0" rx="3"/><text x="527.0" y="2058.2" class="lbl">B2. Contrato</text></g><g class="node node-default"><rect x="764.0" y="2009.5" width="208.0" height="28.0" rx="3"/><text x="775.0" y="2026.5" class="lbl">B2.1. Enviarme una copia</text></g><g class="node node-default"><rect x="1012.0" y="2004.0" width="208.0" height="39.0" rx="3"/><text x="1023.0" y="2021.0" class="lbl">QUE LA IA LE REENVIE</text><text x="1023.0" y="2034.5" class="lbl">AUTOMATICAMENTE</text></g><g class="node node-note"><rect x="1260.0" y="2004.0" width="208.0" height="39.0" rx="3"/><text x="1271.0" y="2021.0" class="lbl">NOTA: TENEMOS QUE VER COMO</text><text x="1271.0" y="2034.5" class="lbl">LO HAREMOS CON LA GESTORIA</text></g><g class="node node-default"><rect x="764.0" y="2067.5" width="208.0" height="39.0" rx="3"/><text x="775.0" y="2084.5" class="lbl">B2.2. Modificaciones /</text><text x="775.0" y="2098.0" class="lbl">corregir un error</text></g><g class="node node-input"><rect x="1012.0" y="2067.5" width="208.0" height="39.0" rx="3"/><text x="1023.0" y="2084.5" class="lbl">QUE ESCRIBA LO QUE NECESITA</text><text x="1023.0" y="2098.0" class="lbl">CORREGIR</text></g><g class="node node-escalation"><rect x="1260.0" y="2054.0" width="208.0" height="66.0" rx="3"/><text x="1271.0" y="2071.0" class="lbl">QUE LA PETICION LLEGUE A</text><text x="1271.0" y="2084.5" class="lbl">LABORAL Y LE PODAMOS</text><text x="1271.0" y="2098.0" class="lbl">NOTIFICAR CUANDO ESTE</text><text x="1271.0" y="2111.5" class="lbl">REALIZADO</text></g><g class="node node-cat2"><rect x="516.0" y="2150.0" width="208.0" height="28.0" rx="3"/><text x="527.0" y="2167.0" class="lbl">B3. Certificados</text></g><g class="node node-input"><rect x="764.0" y="2144.5" width="208.0" height="39.0" rx="3"/><text x="775.0" y="2161.5" class="lbl">B3.1.QUE ESCRIBAN EL</text><text x="775.0" y="2175.0" class="lbl">CERTIFICADO QUE QUIEREN</text></g><g class="node node-escalation"><rect x="1012.0" y="2131.0" width="208.0" height="66.0" rx="3"/><text x="1023.0" y="2148.0" class="lbl">QUE LA PETICION LLEGUE A</text><text x="1023.0" y="2161.5" class="lbl">LABORAL Y LE PODAMOS</text><text x="1023.0" y="2175.0" class="lbl">NOTIFICAR CUANDO ESTE</text><text x="1023.0" y="2188.5" class="lbl">REALIZADO</text></g><g class="node node-cat1"><rect x="268.0" y="2278.2" width="208.0" height="39.0" rx="3"/><text x="279.0" y="2295.2" class="lbl">C. Enfermedades, permisos y</text><text x="279.0" y="2308.8" class="lbl">jornada</text></g><g class="node node-cat2"><rect x="516.0" y="2214.8" width="208.0" height="39.0" rx="3"/><text x="527.0" y="2231.8" class="lbl">C1. Baja médica (IT) y</text><text x="527.0" y="2245.2" class="lbl">accidentes</text></g><g class="node node-default"><rect x="764.0" y="2194.5" width="208.0" height="79.5" rx="3"/><text x="775.0" y="2211.5" class="lbl">Por favor, comunícalo a tu</text><text x="775.0" y="2225.0" class="lbl">jefe de tránsito para que</text><text x="775.0" y="2238.5" class="lbl">pueda gestionarlo.</text><text x="775.0" y="2252.0" class="lbl">¡Esperamos que todo vaya</text><text x="775.0" y="2265.5" class="lbl">bien y te recuperes pronto!</text></g><g class="node node-note"><rect x="1012.0" y="2208.0" width="208.0" height="52.5" rx="3"/><text x="1023.0" y="2225.0" class="lbl">nota: si es posible, que le</text><text x="1023.0" y="2238.5" class="lbl">diga quien es su jefe de</text><text x="1023.0" y="2252.0" class="lbl">transito y el email de jefe</text></g><g class="node node-cat2"><rect x="516.0" y="2278.2" width="208.0" height="39.0" rx="3"/><text x="527.0" y="2295.2" class="lbl">C2. Riesgo de embarazo,</text><text x="527.0" y="2308.8" class="lbl">Maternidad, paternidad.</text></g><g class="node node-default"><rect x="764.0" y="2251.2" width="208.0" height="93.0" rx="3"/><text x="775.0" y="2268.2" class="lbl">Por favor, comunícalo a tu</text><text x="775.0" y="2281.8" class="lbl">jefe de tránsito para que</text><text x="775.0" y="2295.2" class="lbl">pueda gestionarlo.</text><text x="775.0" y="2308.8" class="lbl">¡Enhorabuena y que todo</text><text x="775.0" y="2322.2" class="lbl">vaya muy bien en esta nueva</text><text x="775.0" y="2335.8" class="lbl">etapa!</text></g><g class="node node-note"><rect x="1012.0" y="2271.5" width="208.0" height="52.5" rx="3"/><text x="1023.0" y="2288.5" class="lbl">nota: si es posible, que le</text><text x="1023.0" y="2302.0" class="lbl">diga quien es su jefe de</text><text x="1023.0" y="2315.5" class="lbl">transito y el email de jefe</text></g><g class="node node-cat2"><rect x="516.0" y="2341.8" width="208.0" height="39.0" rx="3"/><text x="527.0" y="2358.8" class="lbl">C3. Vacaciones y horas de</text><text x="527.0" y="2372.2" class="lbl">contrato</text></g><g class="node node-default"><rect x="764.0" y="2301.2" width="208.0" height="120.0" rx="3"/><text x="775.0" y="2318.2" class="lbl">Para solicitar las</text><text x="775.0" y="2331.8" class="lbl">vacaciones o cambio de</text><text x="775.0" y="2345.2" class="lbl">jornada, debes gestionarlo</text><text x="775.0" y="2358.8" class="lbl">directamente con tu jefe de</text><text x="775.0" y="2372.2" class="lbl">tráfico o con el City Lead,</text><text x="775.0" y="2385.8" class="lbl">ya que la planificación y</text><text x="775.0" y="2399.2" class="lbl">gestión corresponde al</text><text x="775.0" y="2412.8" class="lbl">equipo de Operaciones</text></g><g class="node node-note"><rect x="1012.0" y="2335.0" width="208.0" height="52.5" rx="3"/><text x="1023.0" y="2352.0" class="lbl">nota: si es posible, que le</text><text x="1023.0" y="2365.5" class="lbl">diga quien es su jefe de</text><text x="1023.0" y="2379.0" class="lbl">transito y el email de jefe</text></g></g></svg>
+        </div>
+      </div>
+    </div>
+    <figcaption>
+      Se lee de izquierda a derecha: desde <strong>INICIO</strong>, el bot ofrece tres categorías
+      (A. Nómina y pagos, B. Datos y documentos, C. Enfermedades, permisos y jornada) y cada elección abre
+      la siguiente columna, hasta terminar en un cierre o en una derivación a laboral o al jefe de tránsito.
+      Hacé zoom con la rueda del mouse o pellizcando en pantallas táctiles, y arrastrá para recorrer las ramas
+      más largas (algunas llegan al nivel 9).
+    </figcaption>
+  </figure>
+
+  <footer>
+    Fuente: ARBOL BOTS V1.xlsx &middot; Varias ramas incluyen notas del equipo aún sin resolver (cómo determinar el mes reclamado, o si reenviar recibos a un correo distinto) y quedan marcadas punteadas para no perderlas antes de construir el bot.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var viewport = document.getElementById('viewport');
+  var inner = document.getElementById('canvasInner');
+  var pctBtn = document.getElementById('zoomPct');
+  var svgW = 2480, svgH = 2441;
+  var MIN = 0.08, MAX = 5;
+  var scale = 1, tx = 0, ty = 0;
+
+  function clampScale(s) { return Math.min(MAX, Math.max(MIN, s)); }
+
+  function apply() {
+    inner.style.transform = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(' + scale.toFixed(4) + ')';
+    pctBtn.textContent = Math.round(scale * 100) + '%';
+  }
+
+  function fit() {
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+    var s = clampScale(Math.min(vw / svgW, vh / svgH) * 0.94);
+    scale = s;
+    tx = (vw - svgW * s) / 2;
+    ty = (vh - svgH * s) / 2;
+    apply();
+  }
+
+  function zoomAt(px, py, factor) {
+    var ns = clampScale(scale * factor);
+    if (ns === scale) return;
+    var wx = (px - tx) / scale, wy = (py - ty) / scale;
+    scale = ns;
+    tx = px - wx * scale;
+    ty = py - wy * scale;
+    apply();
+  }
+
+  function center() { return { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 }; }
+
+  viewport.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var rect = viewport.getBoundingClientRect();
+    var factor = e.deltaY < 0 ? 1.14 : 1 / 1.14;
+    zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
+  }, { passive: false });
+
+  viewport.addEventListener('dblclick', function (e) {
+    var rect = viewport.getBoundingClientRect();
+    zoomAt(e.clientX - rect.left, e.clientY - rect.top, 1.6);
+  });
+
+  var pointers = {};
+  var dragging = false, lastX = 0, lastY = 0;
+  var pinchStartDist = 0, pinchStartScale = 1;
+
+  function pointerCount() { return Object.keys(pointers).length; }
+
+  viewport.addEventListener('pointerdown', function (e) {
+    viewport.setPointerCapture(e.pointerId);
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (pointerCount() === 1) {
+      dragging = true;
+      lastX = e.clientX; lastY = e.clientY;
+      viewport.classList.add('dragging');
+    } else if (pointerCount() === 2) {
+      dragging = false;
+      var pts = Object.keys(pointers).map(function (k) { return pointers[k]; });
+      pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      pinchStartScale = scale;
+    }
+  });
+
+  viewport.addEventListener('pointermove', function (e) {
+    if (!(e.pointerId in pointers)) return;
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (pointerCount() === 2) {
+      var pts = Object.keys(pointers).map(function (k) { return pointers[k]; });
+      var dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      var rect = viewport.getBoundingClientRect();
+      var cx = (pts[0].x + pts[1].x) / 2 - rect.left;
+      var cy = (pts[0].y + pts[1].y) / 2 - rect.top;
+      var ns = clampScale(pinchStartScale * (dist / pinchStartDist));
+      var wx = (cx - tx) / scale, wy = (cy - ty) / scale;
+      scale = ns;
+      tx = cx - wx * scale;
+      ty = cy - wy * scale;
+      apply();
+    } else if (dragging && pointerCount() === 1) {
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      tx += dx; ty += dy;
+      apply();
+    }
+  });
+
+  function endPointer(e) {
+    delete pointers[e.pointerId];
+    var n = pointerCount();
+    if (n === 0) {
+      dragging = false;
+      viewport.classList.remove('dragging');
+    } else if (n === 1) {
+      dragging = true;
+      var k = Object.keys(pointers)[0];
+      lastX = pointers[k].x; lastY = pointers[k].y;
+    }
+  }
+  viewport.addEventListener('pointerup', endPointer);
+  viewport.addEventListener('pointercancel', endPointer);
+  viewport.addEventListener('pointerleave', function (e) { if (pointerCount() <= 1) endPointer(e); });
+
+  document.getElementById('zoomIn').addEventListener('click', function () {
+    var c = center(); zoomAt(c.x, c.y, 1.25);
+  });
+  document.getElementById('zoomOut').addEventListener('click', function () {
+    var c = center(); zoomAt(c.x, c.y, 1 / 1.25);
+  });
+  document.getElementById('zoomFit').addEventListener('click', fit);
+  pctBtn.addEventListener('click', function () {
+    var c = center(); zoomAt(c.x, c.y, 1 / scale);
+  });
+
+  viewport.addEventListener('keydown', function (e) {
+    var c = center();
+    if (e.key === '+' || e.key === '=') { zoomAt(c.x, c.y, 1.2); e.preventDefault(); }
+    else if (e.key === '-') { zoomAt(c.x, c.y, 1 / 1.2); e.preventDefault(); }
+    else if (e.key === '0') { fit(); e.preventDefault(); }
+  });
+
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script>
